@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# tstackvibe install — register skills with Claude Code
+set -e
+
+REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
+SKILLS_SRC="$REPO_DIR/skills"
+CLAUDE_SKILLS="$HOME/.claude/skills"
+
+echo "Installing tstackvibe skills..."
+
+mkdir -p "$CLAUDE_SKILLS"
+
+installed=0
+skipped=0
+
+for skill_dir in "$SKILLS_SRC"/*/; do
+  if [ ! -f "$skill_dir/SKILL.md" ]; then
+    continue
+  fi
+
+  # Read skill name from frontmatter, fall back to directory name
+  skill_name=$(grep -m1 '^name:' "$skill_dir/SKILL.md" 2>/dev/null | sed 's/^name:[[:space:]]*//' | tr -d '[:space:]')
+  [ -z "$skill_name" ] && skill_name="$(basename "$skill_dir")"
+
+  target="$CLAUDE_SKILLS/$skill_name"
+
+  # Create real directory, symlink SKILL.md inside it
+  mkdir -p "$target"
+  ln -sfn "${skill_dir%/}/SKILL.md" "$target/SKILL.md"
+
+  echo "  + $skill_name"
+  installed=$((installed + 1))
+done
+
+echo ""
+echo "Done. $installed skills installed to $CLAUDE_SKILLS"
+echo ""
+echo "Available skills:"
+for skill_dir in "$SKILLS_SRC"/*/; do
+  [ -f "$skill_dir/SKILL.md" ] || continue
+  name=$(grep -m1 '^name:' "$skill_dir/SKILL.md" 2>/dev/null | sed 's/^name:[[:space:]]*//' | tr -d '[:space:]')
+  [ -z "$name" ] && name="$(basename "$skill_dir")"
+  echo "  /$name"
+done
+echo ""
+echo "Start a new Claude Code session to use them."

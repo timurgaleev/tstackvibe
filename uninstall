@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# tstackvibe uninstall — remove skills from Claude Code
+set -e
+
+REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
+SKILLS_SRC="$REPO_DIR/skills"
+CLAUDE_SKILLS="$HOME/.claude/skills"
+
+echo "Uninstalling tstackvibe skills..."
+
+removed=0
+not_found=0
+
+for skill_dir in "$SKILLS_SRC"/*/; do
+  if [ ! -f "$skill_dir/SKILL.md" ]; then
+    continue
+  fi
+
+  skill_name=$(grep -m1 '^name:' "$skill_dir/SKILL.md" 2>/dev/null | sed 's/^name:[[:space:]]*//' | tr -d '[:space:]')
+  [ -z "$skill_name" ] && skill_name="$(basename "$skill_dir")"
+
+  target="$CLAUDE_SKILLS/$skill_name"
+
+  if [ -d "$target" ]; then
+    # Only remove the SKILL.md symlink we created, then remove dir if empty
+    symlink="$target/SKILL.md"
+    if [ -L "$symlink" ]; then
+      rm -f "$symlink"
+    fi
+    # Remove directory if now empty
+    if [ -z "$(ls -A "$target" 2>/dev/null)" ]; then
+      rmdir "$target"
+    fi
+    echo "  - $skill_name"
+    removed=$((removed + 1))
+  else
+    not_found=$((not_found + 1))
+  fi
+done
+
+echo ""
+echo "Done. $removed skills removed."
+[ "$not_found" -gt 0 ] && echo "($not_found skills were already absent)"
+echo ""
+echo "Start a new Claude Code session for changes to take effect."
